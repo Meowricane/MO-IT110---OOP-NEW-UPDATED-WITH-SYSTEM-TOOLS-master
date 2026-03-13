@@ -2,6 +2,8 @@ package com.motorph.view;
 
 import com.motorph.leave.LeaveRequest;
 import com.motorph.leave.LeaveRequestService;
+import com.motorph.security.RolePermission;
+import com.motorph.util.AppUtils;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -12,31 +14,41 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Panel for submitting leave requests (SL/VL/HL) and managing them.
+ * Panel for submitting and managing leave requests.
  */
 public class LeavePanel extends JPanel {
 
     private JTextField employeeNameField;
     private JComboBox<String> leaveTypeCombo;
     private JTextField leaveDaysField;
+
     private JButton submitButton;
     private JButton deleteButton;
+    private JButton approveButton;
+    private JButton denyButton;
 
     private JTable leaveTable;
     private DefaultTableModel tableModel;
+
     private final LeaveRequestService leaveService;
     private List<LeaveRequest> leaveRequests;
+    private final RolePermission rolePermission;
 
     public LeavePanel(LeaveRequestService leaveService) {
         this.leaveService = leaveService;
         this.leaveRequests = leaveService.getAllLeaveRequests();
+        this.rolePermission = new RolePermission(AppUtils.getCurrentUser().getRole());
 
+        initializeComponents();
+        applyRolePermissions();
+    }
+
+    private void initializeComponents() {
         setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(10, 10, 10, 10);
 
-        // --- TITLE ---
         JLabel titleLabel = new JLabel("Leave Request");
         titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
         titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
@@ -46,37 +58,50 @@ public class LeavePanel extends JPanel {
         gbc.anchor = GridBagConstraints.CENTER;
         add(titleLabel, gbc);
 
-        // Employee Name
         gbc.gridwidth = 1;
         gbc.gridx = 0;
         gbc.gridy = 1;
         add(new JLabel("Employee Name:"), gbc);
+
         employeeNameField = new JTextField(20);
+        if (AppUtils.getCurrentUser() != null) {
+            employeeNameField.setText(AppUtils.getCurrentUser().getUsername());
+        }
         gbc.gridx = 1;
         add(employeeNameField, gbc);
 
-        // Leave Type
         gbc.gridx = 0;
         gbc.gridy = 2;
         add(new JLabel("Leave Type:"), gbc);
-        leaveTypeCombo = new JComboBox<>(new String[]{"Sick Leave", "Holiday Leave", "Personal Time Off"});
+
+        leaveTypeCombo = new JComboBox<>(new String[]{
+                "Sick Leave",
+                "Vacation Leave",
+                "Holiday Leave",
+                "Personal Time Off"
+        });
         gbc.gridx = 1;
         add(leaveTypeCombo, gbc);
 
-        // Number of Days
         gbc.gridx = 0;
         gbc.gridy = 3;
         add(new JLabel("Number of Days:"), gbc);
+
         leaveDaysField = new JTextField(5);
         gbc.gridx = 1;
         add(leaveDaysField, gbc);
 
-        // --- Buttons Panel (Submit + Delete) ---
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
+
         submitButton = new JButton("Submit Leave Request");
-        deleteButton = new JButton("Delete Selected Leave");
+        deleteButton = new JButton("Delete Selected");
+        approveButton = new JButton("Approve");
+        denyButton = new JButton("Deny");
+
         buttonPanel.add(submitButton);
         buttonPanel.add(deleteButton);
+        buttonPanel.add(approveButton);
+        buttonPanel.add(denyButton);
 
         GridBagConstraints gbcButtons = new GridBagConstraints();
         gbcButtons.gridx = 0;
@@ -86,11 +111,17 @@ public class LeavePanel extends JPanel {
         gbcButtons.insets = new Insets(10, 0, 10, 0);
         add(buttonPanel, gbcButtons);
 
-        // --- Table ---
         String[] columns = {"Employee Name", "Leave Type", "Start Date", "End Date", "Notes", "Status"};
-        tableModel = new DefaultTableModel(columns, 0);
+        tableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
         leaveTable = new JTable(tableModel);
         leaveTable.setFillsViewportHeight(true);
+        leaveTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         JScrollPane tableScroll = new JScrollPane(leaveTable);
         GridBagConstraints tableGbc = new GridBagConstraints();
@@ -103,16 +134,29 @@ public class LeavePanel extends JPanel {
         tableGbc.insets = new Insets(20, 10, 10, 10);
         add(tableScroll, tableGbc);
 
-        // Populate table with existing leave requests
         refreshTable();
 
-        // Listeners
         submitButton.addActionListener(new SubmitListener());
         deleteButton.addActionListener(e -> deleteSelectedLeave());
+        approveButton.addActionListener(e -> approveSelectedLeave());
+        denyButton.addActionListener(e -> denySelectedLeave());
+    }
+
+    private void applyRolePermissions() {
+        boolean canReview = rolePermission.canAccessEmployee(); // ADMIN or HR in your setup
+
+        approveButton.setVisible(canReview);
+        denyButton.setVisible(canReview);
+
+        if (canReview) {
+            employeeNameField.setEditable(false);
+        }
     }
 
     private void refreshTable() {
+        leaveRequests = leaveService.getAllLeaveRequests();
         tableModel.setRowCount(0);
+
         for (LeaveRequest lr : leaveRequests) {
             tableModel.addRow(new Object[]{
                     lr.getEmployeeName(),
@@ -125,7 +169,6 @@ public class LeavePanel extends JPanel {
         }
     }
 
-    // --- Submit leave ---
     private class SubmitListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -134,8 +177,12 @@ public class LeavePanel extends JPanel {
             String daysText = leaveDaysField.getText().trim();
 
             if (employeeName.isEmpty() || daysText.isEmpty()) {
-                JOptionPane.showMessageDialog(LeavePanel.this,
-                        "Please fill all fields.", "Input Error", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(
+                        LeavePanel.this,
+                        "Please fill all fields.",
+                        "Input Error",
+                        JOptionPane.WARNING_MESSAGE
+                );
                 return;
             }
 
@@ -144,55 +191,140 @@ public class LeavePanel extends JPanel {
                 days = Integer.parseInt(daysText);
                 if (days <= 0) throw new NumberFormatException();
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(LeavePanel.this,
-                        "Number of days must be a positive integer.", "Input Error", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(
+                        LeavePanel.this,
+                        "Number of days must be a positive integer.",
+                        "Input Error",
+                        JOptionPane.WARNING_MESSAGE
+                );
                 return;
             }
 
             LocalDate startDate = LocalDate.now();
             LocalDate endDate = startDate.plusDays(days - 1);
             String notes = "";
-            String status = "Pending";
+            String status = "PENDING";
 
-            LeaveRequest leaveRequest = new LeaveRequest(employeeName, leaveType, startDate, endDate, notes, status);
+            LeaveRequest leaveRequest = new LeaveRequest(
+                    employeeName,
+                    leaveType,
+                    startDate,
+                    endDate,
+                    notes,
+                    status
+            );
 
             leaveService.addLeaveRequest(leaveRequest);
-            leaveRequests.add(leaveRequest);
             refreshTable();
 
-            JOptionPane.showMessageDialog(LeavePanel.this,
+            JOptionPane.showMessageDialog(
+                    LeavePanel.this,
                     "Leave request submitted for " + employeeName,
-                    "Success", JOptionPane.INFORMATION_MESSAGE);
+                    "Success",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
 
-            // Clear form
-            employeeNameField.setText("");
+            if (!rolePermission.canAccessEmployee()) {
+                employeeNameField.setText(AppUtils.getCurrentUser() != null
+                        ? AppUtils.getCurrentUser().getUsername()
+                        : "");
+            } else {
+                employeeNameField.setText("");
+            }
+
             leaveDaysField.setText("");
             leaveTypeCombo.setSelectedIndex(0);
         }
     }
 
-    // --- Delete selected leave ---
     private void deleteSelectedLeave() {
         int selectedRow = leaveTable.getSelectedRow();
         if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this,
+            JOptionPane.showMessageDialog(
+                    this,
                     "Please select a leave request to delete.",
-                    "No Selection", JOptionPane.WARNING_MESSAGE);
+                    "No Selection",
+                    JOptionPane.WARNING_MESSAGE
+            );
             return;
         }
 
         LeaveRequest toDelete = leaveRequests.get(selectedRow);
-        int confirm = JOptionPane.showConfirmDialog(this,
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
                 "Are you sure you want to delete the selected leave request?",
-                "Confirm Delete", JOptionPane.YES_NO_OPTION);
+                "Confirm Delete",
+                JOptionPane.YES_NO_OPTION
+        );
 
         if (confirm == JOptionPane.YES_OPTION) {
-            leaveService.deleteLeaveRequest(toDelete); // make sure this method exists in LeaveRequestService
-            leaveRequests.remove(selectedRow);
+            leaveService.deleteLeaveRequest(toDelete);
             refreshTable();
-            JOptionPane.showMessageDialog(this,
+
+            JOptionPane.showMessageDialog(
+                    this,
                     "Leave request deleted successfully.",
-                    "Deleted", JOptionPane.INFORMATION_MESSAGE);
+                    "Deleted",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
         }
+    }
+
+    private void approveSelectedLeave() {
+        if (!rolePermission.canAccessEmployee()) {
+            JOptionPane.showMessageDialog(this, "Only Admin/HR can approve leave requests.");
+            return;
+        }
+
+        int selectedRow = leaveTable.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Please select a leave request to approve.",
+                    "No Selection",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        LeaveRequest selectedRequest = leaveRequests.get(selectedRow);
+        leaveService.approveLeaveRequest(selectedRequest);
+        refreshTable();
+
+        JOptionPane.showMessageDialog(
+                this,
+                "Leave request approved.",
+                "Approved",
+                JOptionPane.INFORMATION_MESSAGE
+        );
+    }
+
+    private void denySelectedLeave() {
+        if (!rolePermission.canAccessEmployee()) {
+            JOptionPane.showMessageDialog(this, "Only Admin/HR can deny leave requests.");
+            return;
+        }
+
+        int selectedRow = leaveTable.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Please select a leave request to deny.",
+                    "No Selection",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        LeaveRequest selectedRequest = leaveRequests.get(selectedRow);
+        leaveService.denyLeaveRequest(selectedRequest);
+        refreshTable();
+
+        JOptionPane.showMessageDialog(
+                this,
+                "Leave request denied.",
+                "Denied",
+                JOptionPane.INFORMATION_MESSAGE
+        );
     }
 }

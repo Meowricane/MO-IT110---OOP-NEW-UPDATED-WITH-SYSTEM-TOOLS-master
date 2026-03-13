@@ -69,7 +69,7 @@ public final class AppUtils {
     // ========== UI COMPONENT CREATION ==========
 
     /**
-     * Create a primary button (indigo) matching the modern design
+     * Create a primary button
      */
     public static JButton createPrimaryButton(String text) {
         return createModernButton(text, AppConstants.PRIMARY_BUTTON_COLOR,
@@ -77,7 +77,7 @@ public final class AppUtils {
     }
 
     /**
-     * Create a secondary button (gray) for navigation actions
+     * Create a secondary button
      */
     public static JButton createSecondaryButton(String text) {
         return createModernButton(text, AppConstants.SECONDARY_BUTTON_COLOR,
@@ -85,7 +85,7 @@ public final class AppUtils {
     }
 
     /**
-     * Create a danger button (red) for delete actions
+     * Create a danger button
      */
     public static JButton createDangerButton(String text) {
         return createModernButton(text, AppConstants.DELETE_BUTTON_COLOR,
@@ -93,7 +93,7 @@ public final class AppUtils {
     }
 
     /**
-     * Create a small action button for table cells
+     * Create a small action button
      */
     public static JButton createActionButton(String text, boolean isDanger) {
         Color bgColor, hoverColor;
@@ -115,7 +115,7 @@ public final class AppUtils {
     }
 
     /**
-     * Create a modern card-style panel with subtle shadow effect
+     * Create a modern card-style panel
      */
     public static JPanel createCardPanel() {
         JPanel panel = new JPanel() {
@@ -124,11 +124,9 @@ public final class AppUtils {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-                // Paint subtle shadow
                 g2.setColor(new Color(0, 0, 0, 10));
                 g2.fillRoundRect(2, 2, getWidth() - 2, getHeight() - 2, 8, 8);
 
-                // Paint main background
                 g2.setColor(getBackground());
                 g2.fillRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 8, 8);
 
@@ -186,7 +184,6 @@ public final class AppUtils {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-                // Paint background with rounded corners
                 g2.setColor(getBackground());
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), AppConstants.BUTTON_BORDER_RADIUS,
                         AppConstants.BUTTON_BORDER_RADIUS);
@@ -205,7 +202,6 @@ public final class AppUtils {
         button.setOpaque(true);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        // Add hover effect
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -224,15 +220,14 @@ public final class AppUtils {
     }
 
     /**
-     * Create a navigation button for side panel with custom styling
+     * Create a navigation button
      */
     public static JButton createNavigationButton(String text) {
         JButton button = createModernButton(text,
-                new Color(121, 9, 37), 
-                new Color(168, 82, 104), 
+                new Color(121, 9, 37),
+                new Color(168, 82, 104),
                 AppConstants.BUTTON_TEXT_COLOR);
 
-        // Custom styling for navigation
         button.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         button.setBorder(new EmptyBorder(12, 20, 12, 20));
 
@@ -307,6 +302,16 @@ public final class AppUtils {
     }
 
     /**
+     * Validates required field
+     */
+    public static String validateRequiredField(String value, String fieldName) throws IllegalArgumentException {
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " cannot be empty");
+        }
+        return value.trim();
+    }
+
+    /**
      * Validates salary amount
      */
     public static double validateSalary(String salaryStr, String fieldName) throws IllegalArgumentException {
@@ -315,7 +320,6 @@ public final class AppUtils {
         }
 
         try {
-            // Remove commas and currency symbols
             String cleanSalary = salaryStr.replaceAll("[,₱$]", "").trim();
             double salary = Double.parseDouble(cleanSalary);
 
@@ -335,7 +339,7 @@ public final class AppUtils {
      */
     public static String validatePhoneNumber(String phone) throws IllegalArgumentException {
         if (phone == null || phone.trim().isEmpty()) {
-            return ""; // Phone is optional
+            return "";
         }
 
         String trimmedPhone = phone.trim();
@@ -344,6 +348,70 @@ public final class AppUtils {
         }
 
         return trimmedPhone;
+    }
+
+    /**
+     * Validates SSS number
+     */
+    public static String validateSSS(String sss) throws IllegalArgumentException {
+        if (sss == null || sss.trim().isEmpty()) {
+            throw new IllegalArgumentException("SSS Number cannot be empty");
+        }
+
+        String value = sss.trim();
+        if (!value.matches("^\\d{2}-\\d{7}-\\d$")) {
+            throw new IllegalArgumentException("SSS Number must be in format: 12-1234567-1");
+        }
+
+        return value;
+    }
+
+    /**
+     * Validates PhilHealth number
+     */
+    public static String validatePhilhealth(String philhealth) throws IllegalArgumentException {
+        if (philhealth == null || philhealth.trim().isEmpty()) {
+            throw new IllegalArgumentException("PhilHealth Number cannot be empty");
+        }
+
+        String value = philhealth.trim();
+        if (!value.matches("^\\d{12}$")) {
+            throw new IllegalArgumentException("PhilHealth Number must be exactly 12 digits");
+        }
+
+        return value;
+    }
+
+    /**
+     * Validates TIN number
+     */
+    public static String validateTIN(String tin) throws IllegalArgumentException {
+        if (tin == null || tin.trim().isEmpty()) {
+            throw new IllegalArgumentException("TIN Number cannot be empty");
+        }
+
+        String value = tin.trim();
+        if (!value.matches("^\\d{3}-\\d{3}-\\d{3}-\\d{3}$")) {
+            throw new IllegalArgumentException("TIN Number must be in format: 123-456-789-000");
+        }
+
+        return value;
+    }
+
+    /**
+     * Validates Pag-IBIG number
+     */
+    public static String validatePagibig(String pagibig) throws IllegalArgumentException {
+        if (pagibig == null || pagibig.trim().isEmpty()) {
+            throw new IllegalArgumentException("Pag-IBIG Number cannot be empty");
+        }
+
+        String value = pagibig.trim();
+        if (!value.matches("^\\d{12}$")) {
+            throw new IllegalArgumentException("Pag-IBIG Number must be exactly 12 digits");
+        }
+
+        return value;
     }
 
     // ========== DATE UTILITIES ==========
@@ -443,7 +511,6 @@ public final class AppUtils {
         badge.setFont(AppConstants.SMALL_FONT);
         badge.setForeground(Color.WHITE);
 
-        // Set background color based on status
         if (isActive) {
             badge.setBackground(AppConstants.SUCCESS_COLOR);
         } else {

@@ -24,39 +24,55 @@ public class LeaveRequestService {
         loadLeaveRequestsFromCSV();
     }
 
-    // Add a new leave request
     public void addLeaveRequest(LeaveRequest leaveRequest) {
         leaveRequests.add(leaveRequest);
         saveAllLeaveRequestsToCSV();
     }
 
-    // Get all leave requests
     public List<LeaveRequest> getAllLeaveRequests() {
         return new ArrayList<>(leaveRequests);
     }
 
-    // Delete a leave request
     public void deleteLeaveRequest(LeaveRequest leaveRequest) {
-        // Remove by matching all fields
         Iterator<LeaveRequest> iterator = leaveRequests.iterator();
         while (iterator.hasNext()) {
             LeaveRequest lr = iterator.next();
-            if (lr.getEmployeeName().equals(leaveRequest.getEmployeeName()) &&
-                lr.getLeaveType().equals(leaveRequest.getLeaveType()) &&
-                lr.getStartDate().equals(leaveRequest.getStartDate()) &&
-                lr.getEndDate().equals(leaveRequest.getEndDate()) &&
-                lr.getNotes().equals(leaveRequest.getNotes()) &&
-                lr.getStatus().equals(leaveRequest.getStatus())) {
-
+            if (isSameRequest(lr, leaveRequest)) {
                 iterator.remove();
-                break; // remove only the first matching entry
+                break;
             }
         }
-
         saveAllLeaveRequestsToCSV();
     }
 
-    // Save all leave requests to CSV
+    public void approveLeaveRequest(LeaveRequest leaveRequest) {
+        for (LeaveRequest lr : leaveRequests) {
+            if (isSameRequest(lr, leaveRequest)) {
+                lr.setStatus("APPROVED");
+                break;
+            }
+        }
+        saveAllLeaveRequestsToCSV();
+    }
+
+    public void denyLeaveRequest(LeaveRequest leaveRequest) {
+        for (LeaveRequest lr : leaveRequests) {
+            if (isSameRequest(lr, leaveRequest)) {
+                lr.setStatus("DENIED");
+                break;
+            }
+        }
+        saveAllLeaveRequestsToCSV();
+    }
+
+    private boolean isSameRequest(LeaveRequest a, LeaveRequest b) {
+        return a.getEmployeeName().equals(b.getEmployeeName()) &&
+               a.getLeaveType().equals(b.getLeaveType()) &&
+               a.getStartDate().equals(b.getStartDate()) &&
+               a.getEndDate().equals(b.getEndDate()) &&
+               a.getNotes().equals(b.getNotes());
+    }
+
     private void saveAllLeaveRequestsToCSV() {
         try (CSVWriter writer = new CSVWriter(new FileWriter(csvFilePath))) {
             String[] header = {"Employee Name", "Leave Type", "Start Date", "End Date", "Notes", "Status"};
@@ -69,7 +85,7 @@ public class LeaveRequestService {
                         request.getStartDate() != null ? request.getStartDate().format(dateFormatter) : "",
                         request.getEndDate() != null ? request.getEndDate().format(dateFormatter) : "",
                         request.getNotes() != null ? request.getNotes() : "",
-                        request.getStatus() != null ? request.getStatus() : "Pending"
+                        request.getStatus() != null ? request.getStatus() : "PENDING"
                 };
                 writer.writeNext(data);
             }
@@ -78,7 +94,6 @@ public class LeaveRequestService {
         }
     }
 
-    // Load leave requests from CSV
     private void loadLeaveRequestsFromCSV() {
         File file = new File(csvFilePath);
         if (!file.exists()) return;
@@ -86,17 +101,29 @@ public class LeaveRequestService {
         try (CSVReader reader = new CSVReader(new FileReader(file))) {
             String[] line;
             boolean isHeader = true;
+
             while ((line = reader.readNext()) != null) {
-                if (isHeader) { isHeader = false; continue; }
+                if (isHeader) {
+                    isHeader = false;
+                    continue;
+                }
 
                 String employeeName = line[0];
                 String leaveType = line[1];
                 LocalDate startDate = !line[2].isEmpty() ? LocalDate.parse(line[2], dateFormatter) : null;
                 LocalDate endDate = !line[3].isEmpty() ? LocalDate.parse(line[3], dateFormatter) : null;
                 String notes = line[4];
-                String status = line[5];
+                String status = line.length > 5 ? line[5] : "PENDING";
 
-                LeaveRequest request = new LeaveRequest(employeeName, leaveType, startDate, endDate, notes, status);
+                LeaveRequest request = new LeaveRequest(
+                        employeeName,
+                        leaveType,
+                        startDate,
+                        endDate,
+                        notes,
+                        status
+                );
+
                 leaveRequests.add(request);
             }
         } catch (Exception e) {

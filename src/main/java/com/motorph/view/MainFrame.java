@@ -146,7 +146,7 @@ public class MainFrame extends JFrame {
 
         sidePanel.add(Box.createVerticalGlue());
 
-        JButton logoutBtn = AppUtils.createDangerButton("🚪 Logout");
+        JButton logoutBtn = AppUtils.createDangerButton("Logout");
         logoutBtn.addActionListener(e -> logout());
 
         JPanel logoutPanel = new JPanel(new FlowLayout());

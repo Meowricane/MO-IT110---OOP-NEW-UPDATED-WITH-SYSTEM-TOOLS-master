@@ -62,6 +62,7 @@ com\motorph\view\EmployeePanel$6.class
 com\motorph\view\Dashboard$1.class
 com\motorph\view\renderer\ActionButtonRenderer$ActionButtonListener.class
 com\motorph\view\Payroll$1.class
+com\motorph\view\LeavePanel$1.class
 com\motorph\model\PayrollStatus.class
 com\motorph\repository\DataRepository.class
 com\motorph\view\EmployeePanel$3.class

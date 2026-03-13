@@ -14,7 +14,9 @@ import com.motorph.controller.EmployeeController;
 import com.motorph.model.Employee;
 import com.motorph.util.AppConstants;
 import com.motorph.util.AppUtils;
+import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
 
 public class Dashboard extends JPanel {
 
@@ -347,7 +349,10 @@ public class Dashboard extends JPanel {
     private List<AttendanceRecord> loadAttendanceRecordsForEmployee(int employeeNumber) {
         List<AttendanceRecord> records = new ArrayList<>();
 
-        try (CSVReader reader = new CSVReader(new FileReader("data/attendanceRecord.csv"))) {
+        try (CSVReader reader = new CSVReaderBuilder(new FileReader("data/attendanceRecord.csv"))
+                .withCSVParser(new CSVParserBuilder().withSeparator(',').build())
+                .build()) {
+
             List<String[]> rows = reader.readAll();
 
             for (int i = 1; i < rows.size(); i++) {
@@ -357,17 +362,30 @@ public class Dashboard extends JPanel {
                     continue;
                 }
 
-                int empId = Integer.parseInt(row[0].trim());
-                if (empId != employeeNumber) {
-                    continue;
+                try {
+                    int empId = Integer.parseInt(row[0].trim());
+                    if (empId != employeeNumber) {
+                        continue;
+                    }
+
+                    String dateValue = row[3] != null ? row[3].trim() : "";
+                    String timeInValue = row[4] != null ? row[4].trim() : "";
+                    String timeOutValue = row[5] != null ? row[5].trim() : "";
+
+                    if (dateValue.isEmpty() || timeInValue.isEmpty() || timeOutValue.isEmpty()) {
+                        continue;
+                    }
+
+                    LocalDate date = parseFlexibleDate(dateValue);
+                    LocalTime timeIn = parseFlexibleTime(timeInValue);
+                    LocalTime timeOut = parseFlexibleTime(timeOutValue);
+
+                    AttendanceRecord record = new AttendanceRecord(empId, date, timeIn, timeOut);
+                    records.add(record);
+
+                } catch (Exception rowError) {
+                    System.out.println("Skipping invalid attendance row #" + i + ": " + rowError.getMessage());
                 }
-
-                LocalDate date = LocalDate.parse(row[3].trim(), DateTimeFormatter.ofPattern("M/d/yyyy"));
-                LocalTime timeIn = parseFlexibleTime(row[4].trim());
-                LocalTime timeOut = parseFlexibleTime(row[5].trim());
-
-                AttendanceRecord record = new AttendanceRecord(empId, date, timeIn, timeOut);
-                records.add(record);
             }
 
             records.sort((a, b) -> b.getDate().compareTo(a.getDate()));
@@ -423,6 +441,24 @@ public class Dashboard extends JPanel {
     private String formatTime(LocalTime time) {
         if (time == null) return "--";
         return time.format(DateTimeFormatter.ofPattern("HH:mm"));
+    }
+
+    private LocalDate parseFlexibleDate(String value) {
+        DateTimeFormatter[] formats = new DateTimeFormatter[] {
+                DateTimeFormatter.ofPattern("M/d/yyyy"),
+                DateTimeFormatter.ofPattern("MM/dd/yyyy"),
+                DateTimeFormatter.ofPattern("M/d/yy"),
+                DateTimeFormatter.ofPattern("MM/dd/yy")
+        };
+
+        for (DateTimeFormatter formatter : formats) {
+            try {
+                return LocalDate.parse(value, formatter);
+            } catch (Exception ignored) {
+            }
+        }
+
+        throw new IllegalArgumentException("Invalid date: " + value);
     }
 
     private LocalTime parseFlexibleTime(String value) {
