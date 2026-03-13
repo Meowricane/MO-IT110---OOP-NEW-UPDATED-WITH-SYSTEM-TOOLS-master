@@ -1,6 +1,12 @@
 package com.motorph.view;
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridLayout;
 import java.io.FileReader;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -8,12 +14,26 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.swing.*;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 
 import com.motorph.controller.EmployeeController;
+import com.motorph.dao.AttendanceDAO;
 import com.motorph.model.Employee;
+import com.motorph.model.PaySlip;
 import com.motorph.util.AppConstants;
 import com.motorph.util.AppUtils;
+import com.motorph.service.PayrollProcessor;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
@@ -274,19 +294,38 @@ public class Dashboard extends JPanel {
             return;
         }
 
-        String payslip =
-                "Employee Number: " + currentEmployee.getEmployeeId() +
-                "\nName: " + currentEmployee.getFirstName() + " " + currentEmployee.getLastName() +
-                "\nPosition: " + safeText(currentEmployee.getPosition()) +
-                "\nStatus: " + safeText(currentEmployee.getStatus()) +
-                "\n\nBasic Salary: " + formatMoney(currentEmployee.getBasicSalary()) +
-                "\nRice Subsidy: " + formatMoney(currentEmployee.getRiceSubsidy()) +
-                "\nPhone Allowance: " + formatMoney(currentEmployee.getPhoneAllowance()) +
-                "\nClothing Allowance: " + formatMoney(currentEmployee.getClothingAllowance()) +
-                "\nGross Semi-monthly Rate: " + formatMoney(currentEmployee.getGrossSemiMonthlyRate()) +
-                "\nHourly Rate: " + formatMoney(currentEmployee.getHourlyRate());
+        try {
+            PaySlip paySlip = buildSimplePaySlip(currentEmployee);
 
-        showInfo("My Payslip", payslip);
+            JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+            com.motorph.view.dialog.PayslipDialog dialog =
+                    new com.motorph.view.dialog.PayslipDialog(parentFrame, paySlip, "My Payslip");
+            dialog.setVisible(true);
+
+        } catch (Exception e) {
+            showInfo("My Payslip", "Error loading payslip: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private PaySlip buildSimplePaySlip(Employee employee) {
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(14);
+
+        PaySlip paySlip = new PaySlip(employee, startDate, endDate);
+
+        try {
+            AttendanceDAO attendanceDAO = new AttendanceDAO();
+            java.util.List<com.motorph.model.AttendanceRecord> attendanceRecords = attendanceDAO.loadAttendanceRecords();
+
+            PayrollProcessor payrollProcessor = new PayrollProcessor();
+            paySlip.generate(attendanceRecords, payrollProcessor);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return paySlip;
     }
 
     public void openAttendanceDialog() {

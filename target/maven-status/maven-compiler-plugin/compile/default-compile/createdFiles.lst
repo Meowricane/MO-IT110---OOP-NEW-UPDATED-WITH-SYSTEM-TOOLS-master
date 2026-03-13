@@ -25,6 +25,7 @@ com\motorph\service\PayrollProcessor.class
 com\motorph\model\User.class
 com\motorph\view\ToolsPanel.class
 com\motorph\controller\AuthenticationController.class
+com\motorph\view\dialog\PayslipDialog$1.class
 com\motorph\util\AppUtils$4.class
 com\motorph\view\LoginPanel$1.class
 com\motorph\view\dialog\AttendanceViewerDialog.class
@@ -50,6 +51,7 @@ com\motorph\view\dialog\EmployeeDetailsDialog.class
 com\motorph\view\PayrollNew.class
 com\motorph\view\LoginPanel$EnterKeyListener.class
 com\motorph\view\dialog\AttendanceViewerDialog$1.class
+com\motorph\view\dialog\PayslipDialog$2.class
 com\motorph\view\LoginPanel$3.class
 com\motorph\model\HRUser.class
 com\motorph\service\AuthenticationService.class
