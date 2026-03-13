@@ -238,26 +238,26 @@ public class Dashboard extends JPanel {
     }
 
     private Employee findCurrentEmployee() {
-        try {
-            if (AppUtils.getCurrentUser() == null) {
-                return null;
-            }
-
-            String loginKey = AppUtils.getCurrentUser().getUsername();
-            List<Employee> employees = employeeController.getAllEmployees();
-
-            for (Employee emp : employees) {
-                String empNo = String.valueOf(emp.getEmployeeId());
-                if (empNo.equalsIgnoreCase(loginKey)) {
-                    return emp;
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("Unable to resolve current employee: " + e.getMessage());
+    try {
+        if (AppUtils.getCurrentUser() == null) {
+            return null;
         }
 
-        return null;
+        String loginKey = String.valueOf(AppUtils.getCurrentUser().getEmployeeId());
+        List<Employee> employees = employeeController.getAllEmployees();
+
+        for (Employee emp : employees) {
+            String empNo = String.valueOf(emp.getEmployeeId());
+            if (empNo.equals(loginKey)) {
+                return emp;
+            }
+        }
+    } catch (Exception e) {
+        System.out.println("Unable to resolve current employee: " + e.getMessage());
     }
+
+    return null;
+}
 
     public void openPayslipDialog() {
         if (currentEmployee == null) {
