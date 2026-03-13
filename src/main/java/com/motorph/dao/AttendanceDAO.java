@@ -14,7 +14,7 @@ import java.util.List;
  */
 public class AttendanceDAO {
 
-    private static final String ATTENDANCE_FILE = "data/attendance.csv";
+    private static final String ATTENDANCE_FILE = "data/attendanceRecord.csv";
 
     /**
      * Loads all attendance records from the CSV file.
@@ -34,9 +34,9 @@ public class AttendanceDAO {
                 String[] row = rows.get(i);
 
                 int employeeId = Integer.parseInt(row[0].trim());
-                LocalDate date = LocalDate.parse(row[1].trim());
-                LocalTime timeIn = LocalTime.parse(row[2].trim());
-                LocalTime timeOut = LocalTime.parse(row[3].trim());
+                LocalDate date = LocalDate.parse(row[3].trim(), java.time.format.DateTimeFormatter.ofPattern("MM/dd/yyyy"));
+                LocalTime timeIn = LocalTime.parse(row[4].trim());
+                LocalTime timeOut = LocalTime.parse(row[5].trim());
 
                 AttendanceRecord record =
                         new AttendanceRecord(employeeId, date, timeIn, timeOut);

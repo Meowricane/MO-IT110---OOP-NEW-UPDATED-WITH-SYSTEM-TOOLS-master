@@ -1,13 +1,20 @@
 package com.motorph.view;
 
 import java.awt.*;
+import java.io.FileReader;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import javax.swing.*;
 
 import com.motorph.controller.EmployeeController;
 import com.motorph.model.Employee;
 import com.motorph.util.AppConstants;
 import com.motorph.util.AppUtils;
+import com.opencsv.CSVReader;
 
 public class Dashboard extends JPanel {
 
@@ -238,26 +245,26 @@ public class Dashboard extends JPanel {
     }
 
     private Employee findCurrentEmployee() {
-    try {
-        if (AppUtils.getCurrentUser() == null) {
-            return null;
-        }
-
-        String loginKey = String.valueOf(AppUtils.getCurrentUser().getEmployeeId());
-        List<Employee> employees = employeeController.getAllEmployees();
-
-        for (Employee emp : employees) {
-            String empNo = String.valueOf(emp.getEmployeeId());
-            if (empNo.equals(loginKey)) {
-                return emp;
+        try {
+            if (AppUtils.getCurrentUser() == null) {
+                return null;
             }
-        }
-    } catch (Exception e) {
-        System.out.println("Unable to resolve current employee: " + e.getMessage());
-    }
 
-    return null;
-}
+            String loginKey = String.valueOf(AppUtils.getCurrentUser().getEmployeeId());
+            List<Employee> employees = employeeController.getAllEmployees();
+
+            for (Employee emp : employees) {
+                String empNo = String.valueOf(emp.getEmployeeId());
+                if (empNo.equals(loginKey)) {
+                    return emp;
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Unable to resolve current employee: " + e.getMessage());
+        }
+
+        return null;
+    }
 
     public void openPayslipDialog() {
         if (currentEmployee == null) {
@@ -270,7 +277,6 @@ public class Dashboard extends JPanel {
                 "\nName: " + currentEmployee.getFirstName() + " " + currentEmployee.getLastName() +
                 "\nPosition: " + safeText(currentEmployee.getPosition()) +
                 "\nStatus: " + safeText(currentEmployee.getStatus()) +
-                "\nSupervisor: " + safeText(currentEmployee.getSupervisor()) +
                 "\n\nBasic Salary: " + formatMoney(currentEmployee.getBasicSalary()) +
                 "\nRice Subsidy: " + formatMoney(currentEmployee.getRiceSubsidy()) +
                 "\nPhone Allowance: " + formatMoney(currentEmployee.getPhoneAllowance()) +
@@ -287,16 +293,179 @@ public class Dashboard extends JPanel {
             return;
         }
 
-        String attendanceInfo =
-                "Employee Number: " + currentEmployee.getEmployeeId() +
-                "\nName: " + currentEmployee.getFirstName() + " " + currentEmployee.getLastName() +
-                "\n\nPresent: 10" +
-                "\nLate: 1" +
-                "\nAbsent: 0" +
-                "\nUndertime: 0" +
-                "\n\nNote: Replace these sample values with your attendanceRecord.csv data.";
+        try {
+            List<AttendanceRecord> employeeRecords =
+                    loadAttendanceRecordsForEmployee(currentEmployee.getEmployeeId());
 
-        showInfo("Attendance", attendanceInfo);
+            if (employeeRecords.isEmpty()) {
+                showInfo("Attendance", "No attendance records found for this employee.");
+                return;
+            }
+
+            int presentCount = employeeRecords.size();
+            int lateCount = countLateArrivals(employeeRecords);
+            int undertimeCount = countUndertime(employeeRecords);
+
+            List<AttendanceRecord> lastFiveRecords = getLastFiveRecords(employeeRecords);
+
+            StringBuilder summary = new StringBuilder();
+            summary.append("Employee Number: ").append(currentEmployee.getEmployeeId()).append("\n");
+            summary.append("Name: ").append(currentEmployee.getFirstName())
+                   .append(" ")
+                   .append(currentEmployee.getLastName())
+                   .append("\n\n");
+
+            summary.append("SUMMARY\n");
+            summary.append("-------------------------------------\n");
+            summary.append("Present: ").append(presentCount).append("\n");
+            summary.append("Late: ").append(lateCount).append("\n");
+            summary.append("Undertime: ").append(undertimeCount).append("\n\n");
+
+            summary.append("LAST 5 RECORDS\n");
+            summary.append("--------------------------------------------------\n");
+            summary.append(String.format("%-12s %-8s %-8s %-12s%n",
+                    "Date", "Log In", "Log Out", "Status"));
+            summary.append("--------------------------------------------------\n");
+
+            for (AttendanceRecord record : lastFiveRecords) {
+                String status = determineStatus(record);
+                summary.append(String.format("%-12s %-8s %-8s %-12s%n",
+                        formatDate(record.getDate()),
+                        formatTime(record.getTimeIn()),
+                        formatTime(record.getTimeOut()),
+                        status));
+            }
+
+            showInfo("Attendance", summary.toString());
+
+        } catch (Exception e) {
+            showInfo("Attendance", "Error loading attendance data: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private List<AttendanceRecord> loadAttendanceRecordsForEmployee(int employeeNumber) {
+        List<AttendanceRecord> records = new ArrayList<>();
+
+        try (CSVReader reader = new CSVReader(new FileReader("data/attendanceRecord.csv"))) {
+            List<String[]> rows = reader.readAll();
+
+            for (int i = 1; i < rows.size(); i++) {
+                String[] row = rows.get(i);
+
+                if (row.length < 6) {
+                    continue;
+                }
+
+                int empId = Integer.parseInt(row[0].trim());
+                if (empId != employeeNumber) {
+                    continue;
+                }
+
+                LocalDate date = LocalDate.parse(row[3].trim(), DateTimeFormatter.ofPattern("M/d/yyyy"));
+                LocalTime timeIn = parseFlexibleTime(row[4].trim());
+                LocalTime timeOut = parseFlexibleTime(row[5].trim());
+
+                AttendanceRecord record = new AttendanceRecord(empId, date, timeIn, timeOut);
+                records.add(record);
+            }
+
+            records.sort((a, b) -> b.getDate().compareTo(a.getDate()));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return records;
+    }
+
+    private int countLateArrivals(List<AttendanceRecord> records) {
+        LocalTime lateThreshold = LocalTime.of(9, 0);
+        return (int) records.stream()
+                .filter(record -> record.getTimeIn() != null && record.getTimeIn().isAfter(lateThreshold))
+                .count();
+    }
+
+    private int countUndertime(List<AttendanceRecord> records) {
+        LocalTime undertimeThreshold = LocalTime.of(17, 0);
+        return (int) records.stream()
+                .filter(record -> record.getTimeOut() == null || record.getTimeOut().isBefore(undertimeThreshold))
+                .count();
+    }
+
+    private List<AttendanceRecord> getLastFiveRecords(List<AttendanceRecord> records) {
+        return records.stream()
+                .limit(5)
+                .collect(Collectors.toList());
+    }
+
+    private String determineStatus(AttendanceRecord record) {
+        LocalTime lateThreshold = LocalTime.of(9, 0);
+        LocalTime undertimeThreshold = LocalTime.of(17, 0);
+
+        boolean isLate = record.getTimeIn() != null && record.getTimeIn().isAfter(lateThreshold);
+        boolean isUndertime = record.getTimeOut() == null || record.getTimeOut().isBefore(undertimeThreshold);
+
+        if (isLate && isUndertime) {
+            return "Late & UT";
+        } else if (isLate) {
+            return "Late";
+        } else if (isUndertime) {
+            return "Undertime";
+        }
+        return "On Time";
+    }
+
+    private String formatDate(LocalDate date) {
+        return date.format(DateTimeFormatter.ofPattern("MM/dd/yyyy"));
+    }
+
+    private String formatTime(LocalTime time) {
+        if (time == null) return "--";
+        return time.format(DateTimeFormatter.ofPattern("HH:mm"));
+    }
+
+    private LocalTime parseFlexibleTime(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+
+        value = value.trim();
+
+        DateTimeFormatter[] formats = new DateTimeFormatter[] {
+            DateTimeFormatter.ofPattern("H:mm"),
+            DateTimeFormatter.ofPattern("HH:mm"),
+            DateTimeFormatter.ofPattern("H:mm:ss"),
+            DateTimeFormatter.ofPattern("HH:mm:ss")
+        };
+
+        for (DateTimeFormatter formatter : formats) {
+            try {
+                return LocalTime.parse(value, formatter);
+            } catch (Exception ignored) {
+            }
+        }
+
+        throw new IllegalArgumentException("Invalid time: " + value);
+    }
+
+    private static class AttendanceRecord {
+        private int employeeId;
+        private LocalDate date;
+        private LocalTime timeIn;
+        private LocalTime timeOut;
+
+        public AttendanceRecord(int employeeId, LocalDate date, LocalTime timeIn, LocalTime timeOut) {
+            this.employeeId = employeeId;
+            this.date = date;
+            this.timeIn = timeIn;
+            this.timeOut = timeOut;
+        }
+
+        public int getEmployeeId() { return employeeId; }
+        public LocalDate getDate() { return date; }
+        public LocalTime getTimeIn() { return timeIn; }
+        public LocalTime getTimeOut() { return timeOut; }
     }
 
     public void showLeaveBalanceInfo() {
@@ -310,8 +479,7 @@ public class Dashboard extends JPanel {
                 "\nName: " + currentEmployee.getFirstName() + " " + currentEmployee.getLastName() +
                 "\n\nVacation Leave: 5" +
                 "\nSick Leave: 3" +
-                "\nEmergency Leave: 0" +
-                "\n\nNote: Replace these sample values with your leave records.";
+                "\nEmergency Leave: 0";
 
         showInfo("Leave Balance", leaveInfo);
     }

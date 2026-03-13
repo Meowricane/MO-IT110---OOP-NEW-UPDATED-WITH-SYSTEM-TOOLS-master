@@ -2,11 +2,15 @@ package com.motorph.view;
 
 import javax.swing.*;
 import java.awt.*;
-import com.motorph.controller.*;
+
+import com.motorph.controller.AuthenticationController;
+import com.motorph.controller.EmployeeController;
+import com.motorph.controller.PayrollController;
+import com.motorph.controller.ReportController;
 import com.motorph.leave.LeaveRequestService;
+import com.motorph.security.RolePermission;
 import com.motorph.util.AppConstants;
 import com.motorph.util.AppUtils;
-import com.motorph.security.RolePermission;
 
 public class MainFrame extends JFrame {
     private final EmployeeController employeeController;
@@ -57,14 +61,12 @@ public class MainFrame extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        headerPanel = new HeaderPanel();
+        headerPanel = new HeaderPanel(employeeController);
 
-        // Create card layout first
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
         cardPanel.setBackground(AppConstants.BACKGROUND_COLOR);
 
-        // Initialize panels first
         dashboardPanel = new Dashboard(this, employeeController);
         employeePanel = new EmployeePanel(this, employeeController);
         payrollPanel = new Payroll(this, payrollController);
@@ -72,7 +74,6 @@ public class MainFrame extends JFrame {
         leavePanel = new LeavePanel(leaveService);
         toolsPanel = new ToolsPanel();
 
-        // Register panels
         cardPanel.add(dashboardPanel, "MainMenu");
         cardPanel.add(employeePanel, "EmployeeList");
         cardPanel.add(payrollPanel, "PayrollManagement");
@@ -80,7 +81,6 @@ public class MainFrame extends JFrame {
         cardPanel.add(leavePanel, "LeavePanel");
         cardPanel.add(toolsPanel, "ToolsPanel");
 
-        // Create sidebar AFTER dashboardPanel is initialized
         sideNavPanel = createSideNavigationPanel();
 
         if (rolePermission.canAccessDashboard()) {
@@ -117,12 +117,10 @@ public class MainFrame extends JFrame {
         sidePanel.add(brandPanel);
         sidePanel.add(Box.createVerticalStrut(20));
 
-        // Main navigation
         if (rolePermission.canAccessDashboard()) {
             addNavButton(sidePanel, "Dashboard", "MainMenu");
         }
 
-        // Employee quick links
         if (rolePermission.canAccessLeave()) {
             addNavActionButton(sidePanel, "My Payslip", () -> dashboardPanel.openPayslipDialog());
             addNavActionButton(sidePanel, "Attendance", () -> dashboardPanel.openAttendanceDialog());
@@ -130,7 +128,6 @@ public class MainFrame extends JFrame {
             addNavButton(sidePanel, "Leave Request", "LeavePanel");
         }
 
-        // Admin / HR / Finance / IT modules
         if (rolePermission.canAccessEmployee()) {
             addNavButton(sidePanel, "Employee Management", "EmployeeList");
         }
@@ -226,7 +223,22 @@ public class MainFrame extends JFrame {
 
         if (logoutSuccess) {
             this.dispose();
-            System.exit(0);
+            openLoginScreen();
         }
+    }
+
+    private void openLoginScreen() {
+        SwingUtilities.invokeLater(() -> {
+            Login loginFrame = new Login(() -> {
+                MainFrame newMainFrame = new MainFrame(
+                        employeeController,
+                        payrollController,
+                        reportController
+                );
+                newMainFrame.setVisible(true);
+            });
+
+            loginFrame.showLogin();
+        });
     }
 }

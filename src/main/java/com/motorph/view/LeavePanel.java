@@ -59,7 +59,7 @@ public class LeavePanel extends JPanel {
         gbc.gridx = 0;
         gbc.gridy = 2;
         add(new JLabel("Leave Type:"), gbc);
-        leaveTypeCombo = new JComboBox<>(new String[]{"Sick Leave", "Vacation Leave", "Half Leave"});
+        leaveTypeCombo = new JComboBox<>(new String[]{"Sick Leave", "Holiday Leave", "Personal Time Off"});
         gbc.gridx = 1;
         add(leaveTypeCombo, gbc);
 
