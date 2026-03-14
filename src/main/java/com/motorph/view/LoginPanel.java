@@ -52,7 +52,7 @@ public class LoginPanel extends JPanel {
     // Initialize panel
     private void initPanel() {
         setLayout(new BorderLayout());
-        setOpaque(false); // make panel transparent for background
+        setOpaque(false); 
 
         // Main content panel with GridBagLayout
         JPanel mainPanel = new JPanel(new GridBagLayout()) {
@@ -73,7 +73,7 @@ public class LoginPanel extends JPanel {
         // Title
         JLabel titleLabel = new JLabel("MotorPH Payroll System", SwingConstants.CENTER);
         titleLabel.setFont(AppConstants.TITLE_FONT);
-        titleLabel.setForeground(Color.WHITE); // change color for readability
+        titleLabel.setForeground(Color.WHITE); 
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.insets = new Insets(0, 0, 10, 0);
@@ -82,7 +82,7 @@ public class LoginPanel extends JPanel {
         // Subtitle
         JLabel subtitleLabel = new JLabel("Please login to continue", SwingConstants.CENTER);
         subtitleLabel.setFont(AppConstants.NORMAL_FONT);
-        subtitleLabel.setForeground(Color.WHITE); // change color for readability
+        subtitleLabel.setForeground(Color.WHITE); 
         gbc.gridy = 1;
         gbc.insets = new Insets(0, 0, 30, 0);
         mainPanel.add(subtitleLabel, gbc);

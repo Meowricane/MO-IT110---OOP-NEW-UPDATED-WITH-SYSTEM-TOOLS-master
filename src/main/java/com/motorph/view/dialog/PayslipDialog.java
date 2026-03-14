@@ -271,7 +271,7 @@ public class PayslipDialog extends JDialog {
         JButton closeButton = new JButton("Close");
         closeButton.setFont(AppConstants.NORMAL_FONT);
         closeButton.setBackground(AppConstants.BUTTON_COLOR);
-        closeButton.setForeground(Color.WHITE);
+        closeButton.setForeground(Color.BLACK);
         closeButton.setFocusPainted(false);
         closeButton.addActionListener(e -> dispose());
 
