@@ -8,6 +8,7 @@ com\motorph\view\dialog\SearchResultDialog.class
 com\motorph\view\HeaderPanel.class
 com\motorph\view\MainFrame.class
 com\motorph\model\PayrollRecord.class
+com\motorph\view\dialog\WeeklySummaryReportDialog.class
 com\motorph\view\Dashboard.class
 com\motorph\view\EmployeePanel$4.class
 com\motorph\util\AppUtils$3.class
@@ -52,6 +53,7 @@ com\motorph\view\PayrollNew.class
 com\motorph\view\LoginPanel$EnterKeyListener.class
 com\motorph\view\dialog\AttendanceViewerDialog$1.class
 com\motorph\view\dialog\PayslipDialog$2.class
+com\motorph\view\dialog\WeeklySummaryReportDialog$1.class
 com\motorph\view\LoginPanel$3.class
 com\motorph\model\HRUser.class
 com\motorph\service\AuthenticationService.class
@@ -82,5 +84,6 @@ com\motorph\service\ReportService.class
 com\motorph\view\Payroll.class
 com\motorph\dao\EmployeeDAO.class
 com\motorph\Main.class
+com\motorph\view\dialog\WeeklySummaryReportDialog$2.class
 com\motorph\service\EmployeeService.class
 com\motorph\view\dialog\EmployeeNumberInputDialog.class
