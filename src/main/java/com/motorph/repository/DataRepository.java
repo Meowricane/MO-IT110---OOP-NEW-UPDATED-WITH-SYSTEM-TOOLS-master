@@ -21,21 +21,22 @@ import org.apache.commons.csv.CSVRecord;
 
 import com.motorph.model.AttendanceRecord;
 import com.motorph.model.Employee;
+import com.motorph.model.SystemUserRecord;
 
 /**
- * Consolidated repository for loading and accessing employee and attendance
- * data.
- * This class combines functionality from CSVLoader, CSVRepository,
- * EmployeeRepository,
- * and AttendanceRepository to reduce redundancy.
+ * Consolidated repository for loading and accessing employee, attendance,
+ * and system user CSV data.
  */
 public class DataRepository {
     private static final Logger logger = Logger.getLogger(DataRepository.class.getName());
 
     private final String employeesFilePath;
     private final String attendanceFilePath;
+    private final String usersFilePath;
+
     private List<Employee> employees;
     private List<AttendanceRecord> attendanceRecords;
+    private List<SystemUserRecord> systemUsers;
 
     private static final DateTimeFormatter[] DATE_FORMATTERS = new DateTimeFormatter[] {
             DateTimeFormatter.ofPattern("MM/dd/yyyy"),
@@ -50,8 +51,8 @@ public class DataRepository {
             DateTimeFormatter.ofPattern("H:mm"),
             DateTimeFormatter.ofPattern("HH:mm:ss"),
             DateTimeFormatter.ofPattern("h:mm a"),
-            DateTimeFormatter.ofPattern("h:mm"), // Format seen in data: e.g., "8:59"
-            DateTimeFormatter.ofPattern("H:mm") // Single digit hour format
+            DateTimeFormatter.ofPattern("h:mm"),
+            DateTimeFormatter.ofPattern("H:mm")
     };
 
     static {
@@ -65,17 +66,13 @@ public class DataRepository {
         }
     }
 
-    public DataRepository(String employeesFilePath, String attendanceFilePath) {
+    public DataRepository(String employeesFilePath, String attendanceFilePath, String usersFilePath) {
         this.employeesFilePath = employeesFilePath;
         this.attendanceFilePath = attendanceFilePath;
+        this.usersFilePath = usersFilePath;
         logger.info("DataRepository initialized");
     }
 
-    /**
-     * Get all employees, loading them if necessary
-     * 
-     * @return List of employees
-     */
     public List<Employee> getAllEmployees() {
         if (employees == null) {
             try {
@@ -88,12 +85,6 @@ public class DataRepository {
         return employees;
     }
 
-    /**
-     * Find an employee by ID
-     * 
-     * @param employeeId The employee ID to find
-     * @return Employee or null if not found
-     */
     public Employee findEmployeeById(int employeeId) {
         return getAllEmployees().stream()
                 .filter(emp -> emp.getEmployeeId() == employeeId)
@@ -101,12 +92,6 @@ public class DataRepository {
                 .orElse(null);
     }
 
-    /**
-     * Search for employees by name or ID
-     * 
-     * @param searchTerm The search term (name or ID)
-     * @return List of matching employees
-     */
     public List<Employee> searchEmployees(String searchTerm) {
         String term = searchTerm.toLowerCase();
 
@@ -117,19 +102,14 @@ public class DataRepository {
                     String firstName = employee.getFirstName().toLowerCase();
                     String fullName = (firstName + " " + lastName).toLowerCase();
 
-                    return empId.contains(term) ||
-                            lastName.contains(term) ||
-                            firstName.contains(term) ||
-                            fullName.contains(term);
+                    return empId.contains(term)
+                            || lastName.contains(term)
+                            || firstName.contains(term)
+                            || fullName.contains(term);
                 })
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get all attendance records, loading them if necessary
-     * 
-     * @return List of attendance records
-     */
     public List<AttendanceRecord> getAllAttendanceRecords() {
         if (attendanceRecords == null) {
             try {
@@ -142,42 +122,42 @@ public class DataRepository {
         return attendanceRecords;
     }
 
-    /**
-     * Get attendance records for a specific employee
-     * 
-     * @param employeeId The employee ID
-     * @return List of attendance records
-     */
     public List<AttendanceRecord> getAttendanceRecords(int employeeId) {
         return getAllAttendanceRecords().stream()
                 .filter(record -> record.getEmployeeId() == employeeId)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get attendance records for a specific employee and date range
-     * 
-     * @param employeeId The employee ID
-     * @param startDate  Start date for the range
-     * @param endDate    End date for the range
-     * @return List of attendance records
-     */
     public List<AttendanceRecord> getAttendanceRecords(int employeeId, LocalDate startDate, LocalDate endDate) {
         return getAllAttendanceRecords().stream()
                 .filter(record -> record.getEmployeeId() == employeeId)
                 .filter(record -> {
                     LocalDate recordDate = record.getDate();
-                    return (recordDate.equals(startDate) || recordDate.isAfter(startDate)) &&
-                            (recordDate.equals(endDate) || recordDate.isBefore(endDate));
+                    return (recordDate.equals(startDate) || recordDate.isAfter(startDate))
+                            && (recordDate.equals(endDate) || recordDate.isBefore(endDate));
                 })
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Loads employee data from a CSV file
-     * 
-     * @throws IOException if the file cannot be read
-     */
+    public List<SystemUserRecord> getAllSystemUsers() {
+        if (systemUsers == null) {
+            try {
+                loadSystemUsers();
+            } catch (IOException e) {
+                logger.log(Level.SEVERE, "Error loading system users: {0}", e.getMessage());
+                systemUsers = new ArrayList<>();
+            }
+        }
+        return systemUsers;
+    }
+
+    public SystemUserRecord findSystemUserByEmployeeId(int employeeId) {
+        return getAllSystemUsers().stream()
+                .filter(user -> user.getEmployeeId() == employeeId)
+                .findFirst()
+                .orElse(null);
+    }
+
     private void loadEmployees() throws IOException {
         List<Employee> loadedEmployees = new ArrayList<>();
         logger.log(Level.INFO, "Loading employees from: {0}", employeesFilePath);
@@ -207,19 +187,9 @@ public class DataRepository {
                             new Object[] { totalRecords, ex.getMessage() });
                 }
             }
+
             logger.log(Level.INFO, "Successfully loaded {0} of {1} employee records",
                     new Object[] { successfulRecords, totalRecords });
-
-            // Debug log for employee 10001
-            for (Employee emp : loadedEmployees) {
-                if (emp.getEmployeeId() == 10001) {
-                    logger.log(Level.INFO,
-                            "Employee 10001 details: ID={0}, Name={1} {2}, Birthday={3}, Address={4}, SSS={5}",
-                            new Object[] { emp.getEmployeeId(), emp.getFirstName(), emp.getLastName(),
-                                    emp.getBirthday(), emp.getAddress(), emp.getSssNumber() });
-                    break;
-                }
-            }
 
         } catch (IOException ex) {
             logger.log(Level.WARNING, "Could not read from employee file: {0}", ex.getMessage());
@@ -236,7 +206,6 @@ public class DataRepository {
             String lastName = record.get(1);
             String firstName = record.get(2);
 
-            // Parse birthday with flexible date format
             LocalDate birthday = null;
             if (!record.get(3).isEmpty()) {
                 birthday = parseFlexibleDate(record.get(3));
@@ -258,49 +227,48 @@ public class DataRepository {
             double clothingAllowance = parseAmount(record.get(16));
             double grossSemiMonthlyRate = parseAmount(record.get(17));
 
-            // Use the full constructor to include all employee details
             return new Employee(
                     id, lastName, firstName, birthday, address, phoneNumber,
                     sssNumber, philhealthNumber, tinNumber, pagibigNumber,
                     status, position, supervisor, basicSalary, riceSubsidy,
                     phoneAllowance, clothingAllowance, grossSemiMonthlyRate);
+
         } catch (NumberFormatException ex) {
             throw new IllegalArgumentException("Invalid number format: " + ex.getMessage());
         }
     }
 
     private void loadSampleEmployees(List<Employee> employees) {
-        // Create sample employees with full details if this set of employee you see on
-        // the jtable for employee your app is on the problem hahaha
         LocalDate sampleDate = LocalDate.of(1990, 1, 1);
+
         employees.add(new Employee(
                 10001, "Garcia", "Manuel", sampleDate, "Sample Address", "123-456-789",
                 "SSS-123456", "PH-123456", "TIN-123456", "PAGIBIG-123456",
                 "Regular", "Chief Executive Officer", "N/A", 90000, 1500, 2000, 1000, 45000));
+
         employees.add(new Employee(
                 10002, "Santos", "Antonio", sampleDate, "Sample Address", "123-456-789",
                 "SSS-123456", "PH-123456", "TIN-123456", "PAGIBIG-123456",
                 "Regular", "Chief Operating Officer", "Garcia, Manuel", 60000, 1500, 2000, 1000, 30000));
+
         employees.add(new Employee(
                 10003, "Reyes", "Bianca", sampleDate, "Sample Address", "123-456-789",
                 "SSS-123456", "PH-123456", "TIN-123456", "PAGIBIG-123456",
                 "Regular", "Chief Finance Officer", "Garcia, Manuel", 60000, 1500, 2000, 1000, 30000));
+
         employees.add(new Employee(
                 10004, "Lim", "Isabella", sampleDate, "Sample Address", "123-456-789",
                 "SSS-123456", "PH-123456", "TIN-123456", "PAGIBIG-123456",
                 "Regular", "Chief Marketing Officer", "Garcia, Manuel", 60000, 1500, 2000, 1000, 30000));
+
         employees.add(new Employee(
                 10005, "Lee", "Harper", sampleDate, "Sample Address", "123-456-789",
                 "SSS-123456", "PH-123456", "TIN-123456", "PAGIBIG-123456",
                 "Regular", "IT Operations", "Lim, Antonio", 52670, 1500, 1000, 1000, 26335));
+
         logger.info("Loaded sample employee data");
     }
 
-    /**
-     * Loads attendance records from a CSV file
-     * 
-     * @throws IOException if the file cannot be read
-     */
     private void loadAttendanceRecords() throws IOException {
         List<AttendanceRecord> records = new ArrayList<>();
         logger.log(Level.INFO, "Loading attendance from: {0}", attendanceFilePath);
@@ -346,9 +314,9 @@ public class DataRepository {
     private AttendanceRecord createAttendanceFromRecord(CSVRecord record) {
         try {
             int employeeId = Integer.parseInt(record.get(0));
-            LocalDate date = parseFlexibleDate(record.get(3)); // Using correct column index for Date (3)
-            LocalTime timeIn = parseFlexibleDateTime(record.get(4)); // Using correct column index for Log In (4)
-            LocalTime timeOut = parseFlexibleDateTime(record.get(5)); // Using correct column index for Log Out (5)
+            LocalDate date = parseFlexibleDate(record.get(3));
+            LocalTime timeIn = parseFlexibleDateTime(record.get(4));
+            LocalTime timeOut = parseFlexibleDateTime(record.get(5));
 
             return new AttendanceRecord(employeeId, date, timeIn, timeOut);
         } catch (NumberFormatException | DateTimeParseException ex) {
@@ -364,6 +332,56 @@ public class DataRepository {
         records.add(new AttendanceRecord(10002, today, LocalTime.of(8, 15), LocalTime.of(17, 15)));
         records.add(new AttendanceRecord(10002, today.minusDays(1), LocalTime.of(8, 0), LocalTime.of(17, 0)));
         logger.info("Loaded sample attendance data");
+    }
+
+    private void loadSystemUsers() throws IOException {
+        List<SystemUserRecord> loadedUsers = new ArrayList<>();
+        logger.log(Level.INFO, "Loading users from: {0}", usersFilePath);
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(usersFilePath))) {
+            CSVParser parser = CSVFormat.DEFAULT.builder()
+                    .setHeader()
+                    .setSkipHeaderRecord(true)
+                    .build()
+                    .parse(reader);
+
+            for (CSVRecord record : parser) {
+                try {
+                    SystemUserRecord user = createSystemUserFromRecord(record);
+                    if (user != null) {
+                        loadedUsers.add(user);
+                    }
+                } catch (IllegalArgumentException ex) {
+                    logger.log(Level.WARNING, "Invalid user record: {0}", ex.getMessage());
+                }
+            }
+
+        } catch (IOException ex) {
+            logger.log(Level.WARNING, "Could not read from user file: {0}", ex.getMessage());
+        }
+
+        this.systemUsers = loadedUsers;
+    }
+
+    private SystemUserRecord createSystemUserFromRecord(CSVRecord record) {
+        try {
+            int employeeId = Integer.parseInt(record.get(0).trim());
+            String username = record.get(1).trim();
+            String password = record.get(2).trim();
+            String role = record.get(3).trim();
+            boolean active = Boolean.parseBoolean(record.get(4).trim());
+
+            SystemUserRecord user = new SystemUserRecord();
+            user.setEmployeeId(employeeId);
+            user.setUsername(username);
+            user.setPassword(password);
+            user.setRole(role);
+            user.setActive(active);
+
+            return user;
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Invalid user number format: " + ex.getMessage());
+        }
     }
 
     private double parseAmount(String amountStr) {
@@ -386,14 +404,13 @@ public class DataRepository {
             return LocalDate.now();
         }
 
-        // Clean up the date string - sometimes quotes or extra spaces might be present
         String cleanedDateStr = dateStr.trim().replace("\"", "");
 
         for (DateTimeFormatter formatter : DATE_FORMATTERS) {
             try {
                 return LocalDate.parse(cleanedDateStr, formatter);
             } catch (DateTimeParseException e) {
-                // Try the next formatter
+                // try next formatter
             }
         }
 
@@ -407,14 +424,13 @@ public class DataRepository {
             return LocalTime.of(8, 0);
         }
 
-        // Clean up the time string - sometimes quotes or extra spaces might be present
         String cleanedTimeStr = timeStr.trim().replace("\"", "");
 
         for (DateTimeFormatter formatter : TIME_FORMATTERS) {
             try {
                 return LocalTime.parse(cleanedTimeStr, formatter);
             } catch (DateTimeParseException e) {
-                // Try the next formatter
+                // try next formatter
             }
         }
 

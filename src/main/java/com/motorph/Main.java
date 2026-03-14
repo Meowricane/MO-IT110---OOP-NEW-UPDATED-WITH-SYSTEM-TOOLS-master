@@ -55,7 +55,6 @@ public class Main {
 
     private static void initializeDefaultSession() {
         try {
-            // Use AdminUser instead of abstract User
             AdminUser defaultUser = new AdminUser("admin", "password", 1, true);
             AppUtils.setCurrentUser(defaultUser);
             logger.log(Level.INFO, "Default session initialized for user: {0}", defaultUser.getUsername());
@@ -87,22 +86,24 @@ public class Main {
     public static void initializeApplication() throws IOException {
         String employeesFilePath = AppConstants.getEmployeeFilePath();
         String attendanceFilePath = AppConstants.getAttendanceFilePath();
+        String usersFilePath = "data/userCredentials.csv";
 
-        // Original repository (for backward compatibility)
-        DataRepository dataRepository = new DataRepository(employeesFilePath, attendanceFilePath);
+        DataRepository dataRepository = new DataRepository(
+                employeesFilePath,
+                attendanceFilePath,
+                usersFilePath
+        );
+
         List<Employee> employees = dataRepository.getAllEmployees();
         List<AttendanceRecord> attendanceRecords = dataRepository.getAllAttendanceRecords();
 
-        // TEST: AttendanceDAO
         AttendanceDAO attendanceDAO = new AttendanceDAO();
         List<AttendanceRecord> daoRecords = attendanceDAO.loadAttendanceRecords();
         System.out.println("AttendanceDAO loaded: " + daoRecords.size());
 
         PayrollProcessor payrollCalculator = new PayrollProcessor();
 
-        // Updated EmployeeService constructor
         EmployeeService employeeService = new EmployeeService(employees, attendanceRecords, employeesFilePath);
-
         PayrollService payrollService = new PayrollService(employees, attendanceRecords, payrollCalculator);
         ReportService reportService = new ReportService(employeeService, payrollService);
 
