@@ -13,7 +13,7 @@ Java Development Kit (JDK) 8 or higher
 NetBeans IDE (recommended: version 8.2 or higher)
 Minimum 512MB RAM
 100MB free disk space
-Project Structure
+## **Project Structure**
 MotorPH-PayrollSystem/
 │
 ├── src/                           # Source code directory
