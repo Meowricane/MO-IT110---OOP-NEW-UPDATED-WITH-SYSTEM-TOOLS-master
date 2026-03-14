@@ -76,7 +76,6 @@ public class LeavePanel extends JPanel {
 
         leaveTypeCombo = new JComboBox<>(new String[]{
                 "Sick Leave",
-                "Vacation Leave",
                 "Holiday Leave",
                 "Personal Time Off"
         });
